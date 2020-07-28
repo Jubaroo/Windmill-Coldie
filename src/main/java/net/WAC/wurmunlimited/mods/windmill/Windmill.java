@@ -5,44 +5,47 @@ import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.*;
 import com.wurmonline.server.sounds.SoundPlayer;
 
+import net.WAC.wurmunlimited.mods.windmill.actions.PlankAction;
+import net.WAC.wurmunlimited.mods.windmill.actions.ShaftAction;
 import org.gotti.wurmunlimited.modloader.interfaces.*;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
 import java.util.Properties;
 
-public class windmill implements WurmServerMod, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
+public class Windmill implements WurmServerMod, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
 
 
     public String getVersion() {
         return "v3.0";
     }
 
-    static int windmilltemplateid = 5557;
-    static int sawmilltemplateid = 5558;
+    public static int windmillTemplateId;
+    public static int sawmillTemplateId;
 
 
     @Override
     public void configure(Properties properties) {
+        windmillTemplateId = Integer.parseInt(properties.getProperty("Windmill_templateId", String.valueOf(5557)));
+        sawmillTemplateId = Integer.parseInt(properties.getProperty("Sawmill_templateId", String.valueOf(5558)));
         //TODO add configs from properties file
-        // item id's
         // number of items produced?
-        // amount of time the machines produce
+        // amount of time the machines produce?
     }
 
 
     @Override
     public void onServerStarted() {
-        ModActions.registerAction(new shafteaction());
-        ModActions.registerAction(new plankaction());
+        ModActions.registerAction(new ShaftAction());
+        ModActions.registerAction(new PlankAction());
     }
 
     @Override
     public void onItemTemplatesCreated() {
-        new windmillitems();
+        new ItemsWindmill();
     }
 
 
-    static boolean windmillItemCreate(Creature performer, Item item, int templateProduce, int templateConsume, int weightconsume, int maxNums, int maxItems, String SoundName) {
+    public static boolean itemCreate(Creature performer, Item item, int templateProduce, int templateConsume, int weightconsume, int maxNums, int maxItems, String SoundName) {
 
         Item[] currentItems = item.getAllItems(true);
         int produceTally = 0;

@@ -1,12 +1,12 @@
-package net.WAC.wurmunlimited.mods.windmill;
+package net.WAC.wurmunlimited.mods.windmill.actions;
 
 
+import net.WAC.wurmunlimited.mods.windmill.Windmill;
 import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
 import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
 import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
 import org.gotti.wurmunlimited.modsupport.actions.ModAction;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
-
 
 import com.wurmonline.server.MiscConstants;
 import com.wurmonline.server.Server;
@@ -22,13 +22,13 @@ import com.wurmonline.shared.constants.SoundNames;
 import java.util.List;
 import java.util.Arrays;
 
-public class plankaction implements WurmServerMod, ItemTypes, MiscConstants, ModAction, BehaviourProvider, ActionPerformer {
+public class ShaftAction implements WurmServerMod, ItemTypes, MiscConstants, ModAction, BehaviourProvider, ActionPerformer {
 	public static short actionId;
 	static ActionEntry actionEntry;
 
-	public plankaction() {
+	public ShaftAction() {
 		actionId = (short) ModActions.getNextActionId();
-		actionEntry = ActionEntry.createEntry(actionId, "Create planks", "Creating planks", new int[]{
+		actionEntry = ActionEntry.createEntry(actionId, "Create shafts", "Creating shafts", new int[]{
 		});
 		ModActions.registerAction(actionEntry);
 	}
@@ -57,7 +57,7 @@ public class plankaction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 	public List<ActionEntry> getBehavioursFor(Creature performer, Item target) {
 		// add check for if event active
 		if (performer instanceof Player) {
-			if (target.getTemplateId() == net.WAC.wurmunlimited.mods.windmill.windmill.sawmilltemplateid)
+			if (target.getTemplateId() == Windmill.sawmillTemplateId)
 				return (List<ActionEntry>) Arrays.asList(actionEntry);
 		}
 		return null;
@@ -82,18 +82,18 @@ public class plankaction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 		//max number of items to make each time.
 		int itemstomake = 20;
 
-		if (target.getTemplateId() == net.WAC.wurmunlimited.mods.windmill.windmill.sawmilltemplateid) {
+		if (target.getTemplateId() == Windmill.sawmillTemplateId) {
 			if (counter == 1.0F) {
 				performer.sendActionControl(actionstring, true, actiontime);
-				performer.getCommunicator().sendNormalServerMessage(String.format("You will make a maximum of %d planks every %d seconds.", itemstomake, tickTimes));
+				performer.getCommunicator().sendNormalServerMessage(String.format("You will make a maximum of %d shafts every %d seconds.", itemstomake, tickTimes));
 			}
 			if (act.currentSecond() % tickTimes == 0) {
 				if (performer.getStatus().getStamina() < 5000) {
 					performer.getCommunicator().sendNormalServerMessage("You must rest.");
 					return true;
 				}
-				performer.getStatus().modifyStamina(-4000.0F);
-				return net.WAC.wurmunlimited.mods.windmill.windmill.windmillItemCreate(performer, target, ItemList.plank, ItemList.log, 3000, 20, 1000, SoundNames.CARPENTRY_SAW_SND);
+				performer.getStatus().modifyStamina(-2000.0F);
+				return Windmill.itemCreate(performer, target, ItemList.shaft, ItemList.log, (int) (1500 - (target.getCurrentQualityLevel() * 5)), 20, 1000, SoundNames.CARPENTRY_SAW_SND);
 			}
 
 		}
