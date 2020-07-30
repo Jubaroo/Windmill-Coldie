@@ -77,7 +77,7 @@ public class FlourAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 		//wind power calculation
 		int absolutewindpower = (int) (10 * Math.abs(Server.getWeather().getWindPower()));
 		//subtract wind seconds, 0-5, gale being 5 seconds
-		tickTimes = (int) (tickTimes - absolutewindpower);
+		tickTimes = tickTimes - absolutewindpower;
 		//max number of items to make each time.
 		int itemstomake = 20;
 

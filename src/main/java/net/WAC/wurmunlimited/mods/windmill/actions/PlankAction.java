@@ -1,14 +1,6 @@
 package net.WAC.wurmunlimited.mods.windmill.actions;
 
 
-import net.WAC.wurmunlimited.mods.windmill.Windmill;
-import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
-import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
-import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
-import org.gotti.wurmunlimited.modsupport.actions.ModAction;
-import org.gotti.wurmunlimited.modsupport.actions.ModActions;
-
-
 import com.wurmonline.server.MiscConstants;
 import com.wurmonline.server.Server;
 import com.wurmonline.server.behaviours.Action;
@@ -19,9 +11,15 @@ import com.wurmonline.server.items.ItemList;
 import com.wurmonline.server.items.ItemTypes;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.shared.constants.SoundNames;
+import net.WAC.wurmunlimited.mods.windmill.Windmill;
+import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
+import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
+import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
+import org.gotti.wurmunlimited.modsupport.actions.ModAction;
+import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
-import java.util.List;
 import java.util.Arrays;
+import java.util.List;
 
 public class PlankAction implements WurmServerMod, ItemTypes, MiscConstants, ModAction, BehaviourProvider, ActionPerformer {
 	public static short actionId;
@@ -79,11 +77,11 @@ public class PlankAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 		//wind power calculation
 		int absolutewindpower = (int) (10 * Math.abs(Server.getWeather().getWindPower()));
 		//subtract wind seconds, 0-5, gale being 5 seconds
-		tickTimes = (int) (tickTimes - absolutewindpower);
+		tickTimes = tickTimes - absolutewindpower;
 		//max number of items to make each time.
 		int itemstomake = 20;
 
-		if (target.getTemplateId() == Windmill.sawmillTemplateId) {
+		if (target.getTemplateId() == Windmill.sawmillTemplateId && target.getCurrentQualityLevel() >= 25) {
 			if (counter == 1.0F) {
 				performer.sendActionControl(actionstring, true, actiontime);
 				performer.getCommunicator().sendNormalServerMessage(String.format("You will make a maximum of %d planks every %d seconds.", itemstomake, tickTimes));
@@ -94,6 +92,9 @@ public class PlankAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 					return true;
 				}
 				performer.getStatus().modifyStamina(-4000.0F);
+				// damage the sawmill a bit when used
+				float dam1 = Server.rand.nextFloat() * 0.2f;
+				target.setDamage(target.getDamage() + dam1);
 				return Windmill.itemCreate(performer, target, ItemList.plank, ItemList.log, (int) (3000 - (target.getCurrentQualityLevel() * 10)), 20, 1000, SoundNames.CARPENTRY_SAW_SND);
 			}
 

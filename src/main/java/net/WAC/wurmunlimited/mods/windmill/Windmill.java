@@ -1,47 +1,117 @@
 package net.WAC.wurmunlimited.mods.windmill;
 
-import com.wurmonline.server.*;
+import com.wurmonline.server.FailedException;
+import com.wurmonline.server.Items;
 import com.wurmonline.server.creatures.Creature;
-import com.wurmonline.server.items.*;
+import com.wurmonline.server.items.Item;
+import com.wurmonline.server.items.ItemFactory;
+import com.wurmonline.server.items.ItemList;
+import com.wurmonline.server.items.NoSuchTemplateException;
 import com.wurmonline.server.sounds.SoundPlayer;
-
+import javassist.CannotCompileException;
+import javassist.ClassPool;
+import javassist.NotFoundException;
+import javassist.expr.ExprEditor;
+import javassist.expr.MethodCall;
 import net.WAC.wurmunlimited.mods.windmill.actions.PlankAction;
 import net.WAC.wurmunlimited.mods.windmill.actions.ShaftAction;
-import org.gotti.wurmunlimited.modloader.interfaces.*;
+import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
+import org.gotti.wurmunlimited.modloader.classhooks.InvocationHandlerFactory;
+import org.gotti.wurmunlimited.modloader.interfaces.Configurable;
+import org.gotti.wurmunlimited.modloader.interfaces.ItemTemplatesCreatedListener;
+import org.gotti.wurmunlimited.modloader.interfaces.ServerStartedListener;
+import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
 import java.util.Properties;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class Windmill implements WurmServerMod, Configurable, ServerStartedListener, ItemTemplatesCreatedListener {
 
+    public static Logger logger = Logger.getLogger(Windmill.class.getName());
+
 
     public String getVersion() {
-        return "v3.0";
+        return "v4.0";
     }
 
     public static int windmillTemplateId;
     public static int sawmillTemplateId;
+    public static int loggingWagonTemplateId;
 
 
     @Override
     public void configure(Properties properties) {
         windmillTemplateId = Integer.parseInt(properties.getProperty("Windmill_templateId", String.valueOf(5557)));
         sawmillTemplateId = Integer.parseInt(properties.getProperty("Sawmill_templateId", String.valueOf(5558)));
+        loggingWagonTemplateId = Integer.parseInt(properties.getProperty("Logging_Wagon_templateId", String.valueOf(5559)));
+        WagonFactory.registerWagonManageHook();
         //TODO add configs from properties file
-        // number of items produced?
-        // amount of time the machines produce?
+        // make the sawmill take small damage every time it creates an item
+        // make an enchant for the mill to work?
     }
 
+    @Override
+    public void init() {
+        final ClassPool classPool = HookManager.getInstance().getClassPool();
+
+        // block all items except felled trees from being put into the logging wagon
+        try {
+            classPool.getCtClass("com.wurmonline.server.items.Item")
+                    .getMethod("moveToItem", "(Lcom/wurmonline/server/creatures/Creature;JZ)Z")
+                    .instrument(new ExprEditor() {
+                        boolean patched = false;
+
+                        @Override
+                        public void edit(MethodCall m) throws CannotCompileException {
+                            if (!patched && m.getMethodName().equals("getItem")) {
+                                m.replace("$_=$proceed($$); if (net.WAC.wurmunlimited.mods.windmill.Windmill.blockMove(this, $_, mover)) return false;");
+                                logger.log(Level.INFO,(String.format("Hooking Item.moveToItem at %d", m.getLineNumber())));
+                                patched = true;
+                            }
+                        }
+                    });
+
+            // control the max number of items that can be put into the wagon
+            HookManager.getInstance().registerHook("com.wurmonline.server.items.Item", "mayCreatureInsertItem", "()Z", new InvocationHandlerFactory() {
+                @Override
+                public InvocationHandler createInvocationHandler() {
+                    return new InvocationHandler() {
+                        @Override
+                        public Object invoke(Object object, Method method, Object[] args) throws Throwable {
+                            Item item = (Item) object;
+                            for (int id : WagonFactory.wagonList) {
+                                if (item.getTemplateId() == id) {
+                                return item.getItemCount() < 200;
+                            }
+                            }
+                            return method.invoke(object, args);
+                        }
+                    };
+                }
+            });
+
+        } catch (CannotCompileException | NotFoundException e) {
+            e.printStackTrace();
+        }
+
+    }
 
     @Override
     public void onServerStarted() {
         ModActions.registerAction(new ShaftAction());
         ModActions.registerAction(new PlankAction());
+        WagonFactory.createCreationEntries();
     }
+
 
     @Override
     public void onItemTemplatesCreated() {
         new ItemsWindmill();
+        WagonFactory.addAllWagons();
     }
 
 
@@ -108,6 +178,27 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
             }
         }
         return true;
+    }
+
+    public static final String[] WAGON_LIST = {
+            "model.transports.medium.wagon.logging",
+    };
+
+    public static final String[] WAGON_NAMES = {
+            "logging"
+    };
+
+    // Block items from being moved to certain items
+    public static boolean blockMove(Item source, Item target, Creature performer) {
+        for (int id : WagonFactory.wagonList) {
+            if (target.getTemplateId() == id) {
+                if (source.getTemplateId() != ItemList.logHuge) {
+                    performer.getCommunicator().sendNormalServerMessage("Only felled trees can be put into a logging wagon.");
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
 }

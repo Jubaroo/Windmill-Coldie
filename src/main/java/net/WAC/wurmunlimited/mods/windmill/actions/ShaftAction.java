@@ -1,13 +1,6 @@
 package net.WAC.wurmunlimited.mods.windmill.actions;
 
 
-import net.WAC.wurmunlimited.mods.windmill.Windmill;
-import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
-import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
-import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
-import org.gotti.wurmunlimited.modsupport.actions.ModAction;
-import org.gotti.wurmunlimited.modsupport.actions.ModActions;
-
 import com.wurmonline.server.MiscConstants;
 import com.wurmonline.server.Server;
 import com.wurmonline.server.behaviours.Action;
@@ -18,9 +11,15 @@ import com.wurmonline.server.items.ItemList;
 import com.wurmonline.server.items.ItemTypes;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.shared.constants.SoundNames;
+import net.WAC.wurmunlimited.mods.windmill.Windmill;
+import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
+import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
+import org.gotti.wurmunlimited.modsupport.actions.BehaviourProvider;
+import org.gotti.wurmunlimited.modsupport.actions.ModAction;
+import org.gotti.wurmunlimited.modsupport.actions.ModActions;
 
-import java.util.List;
 import java.util.Arrays;
+import java.util.List;
 
 public class ShaftAction implements WurmServerMod, ItemTypes, MiscConstants, ModAction, BehaviourProvider, ActionPerformer {
 	public static short actionId;
@@ -78,7 +77,7 @@ public class ShaftAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 		//wind power calculation
 		int absolutewindpower = (int) (10 * Math.abs(Server.getWeather().getWindPower()));
 		//subtract wind seconds, 0-5, gale being 5 seconds
-		tickTimes = (int) (tickTimes - absolutewindpower);
+		tickTimes = tickTimes - absolutewindpower;
 		//max number of items to make each time.
 		int itemstomake = 20;
 
@@ -94,6 +93,7 @@ public class ShaftAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 				}
 				performer.getStatus().modifyStamina(-2000.0F);
 				return Windmill.itemCreate(performer, target, ItemList.shaft, ItemList.log, (int) (1500 - (target.getCurrentQualityLevel() * 5)), 20, 1000, SoundNames.CARPENTRY_SAW_SND);
+				//todo add a small bit of random damage
 			}
 
 		}
