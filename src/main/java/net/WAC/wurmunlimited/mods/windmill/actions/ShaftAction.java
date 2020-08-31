@@ -9,6 +9,7 @@ import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
 import com.wurmonline.server.items.ItemList;
 import com.wurmonline.server.items.ItemTypes;
+import com.wurmonline.server.items.NoSuchTemplateException;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.shared.constants.SoundNames;
 import net.WAC.wurmunlimited.mods.windmill.Windmill;
@@ -92,7 +93,11 @@ public class ShaftAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 					return true;
 				}
 				performer.getStatus().modifyStamina(-2000.0F);
-				return Windmill.itemCreate(performer, target, ItemList.shaft, ItemList.log, (int) (1500 - (target.getCurrentQualityLevel() * 5)), 20, 1000, SoundNames.CARPENTRY_SAW_SND);
+				try {
+					return Windmill.itemCreate(performer, target, ItemList.shaft, ItemList.log, (int) (1500 - (target.getCurrentQualityLevel() * 5)), 20, 1000, SoundNames.CARPENTRY_SAW_SND);
+				} catch (NoSuchTemplateException e) {
+					e.printStackTrace();
+				}
 				//todo add a small bit of random damage
 			}
 

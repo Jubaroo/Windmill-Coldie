@@ -1,20 +1,23 @@
 package net.WAC.wurmunlimited.mods.windmill;
 
+import com.sun.javafx.util.Logging;
 import com.wurmonline.server.FailedException;
+import com.wurmonline.server.Features;
 import com.wurmonline.server.Items;
+import com.wurmonline.server.behaviours.Seat;
+import com.wurmonline.server.behaviours.Vehicle;
 import com.wurmonline.server.creatures.Creature;
-import com.wurmonline.server.items.Item;
-import com.wurmonline.server.items.ItemFactory;
-import com.wurmonline.server.items.ItemList;
-import com.wurmonline.server.items.NoSuchTemplateException;
+import com.wurmonline.server.items.*;
 import com.wurmonline.server.sounds.SoundPlayer;
-import javassist.CannotCompileException;
-import javassist.ClassPool;
-import javassist.NotFoundException;
+import com.wurmonline.shared.constants.ProtoConstants;
+import javassist.*;
+import javassist.bytecode.Descriptor;
 import javassist.expr.ExprEditor;
 import javassist.expr.MethodCall;
+import net.WAC.wurmunlimited.mods.windmill.actions.FlourAction;
 import net.WAC.wurmunlimited.mods.windmill.actions.PlankAction;
 import net.WAC.wurmunlimited.mods.windmill.actions.ShaftAction;
+import net.WAC.wurmunlimited.mods.windmill.util.SeatsFacadeImpl;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 import org.gotti.wurmunlimited.modloader.classhooks.InvocationHandlerFactory;
 import org.gotti.wurmunlimited.modloader.interfaces.Configurable;
@@ -22,6 +25,7 @@ import org.gotti.wurmunlimited.modloader.interfaces.ItemTemplatesCreatedListener
 import org.gotti.wurmunlimited.modloader.interfaces.ServerStartedListener;
 import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
+import org.gotti.wurmunlimited.modsupport.vehicles.VehicleFacadeImpl;
 
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
@@ -49,6 +53,7 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
         sawmillTemplateId = Integer.parseInt(properties.getProperty("Sawmill_templateId", String.valueOf(5558)));
         loggingWagonTemplateId = Integer.parseInt(properties.getProperty("Logging_Wagon_templateId", String.valueOf(5559)));
         WagonFactory.registerWagonManageHook();
+        registerWagonHook();
         //TODO add configs from properties file
         // make the sawmill take small damage every time it creates an item
         // make an enchant for the mill to work?
@@ -69,7 +74,7 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
                         public void edit(MethodCall m) throws CannotCompileException {
                             if (!patched && m.getMethodName().equals("getItem")) {
                                 m.replace("$_=$proceed($$); if (net.WAC.wurmunlimited.mods.windmill.Windmill.blockMove(this, $_, mover)) return false;");
-                                logger.log(Level.INFO,(String.format("Hooking Item.moveToItem at %d", m.getLineNumber())));
+                                logger.log(Level.INFO, (String.format("Hooking Item.moveToItem at %d", m.getLineNumber())));
                                 patched = true;
                             }
                         }
@@ -84,9 +89,9 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
                         public Object invoke(Object object, Method method, Object[] args) throws Throwable {
                             Item item = (Item) object;
                             for (int id : WagonFactory.wagonList) {
-                                if (item.getTemplateId() == id) {
-                                return item.getItemCount() < 200;
-                            }
+                                if (item.getTemplateId() == id && item.getModelName().equals("model.transports.medium.wagon.logging")) {
+                                    return item.getItemCount() < 200;
+                                }
                             }
                             return method.invoke(object, args);
                         }
@@ -104,6 +109,7 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
     public void onServerStarted() {
         ModActions.registerAction(new ShaftAction());
         ModActions.registerAction(new PlankAction());
+        ModActions.registerAction(new FlourAction());
         WagonFactory.createCreationEntries();
     }
 
@@ -115,7 +121,7 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
     }
 
 
-    public static boolean itemCreate(Creature performer, Item item, int templateProduce, int templateConsume, int weightconsume, int maxNums, int maxItems, String SoundName) {
+    public static boolean itemCreate(Creature performer, Item item, int templateProduce, int templateConsume, int weightconsume, int maxNums, int maxItems, String SoundName) throws NoSuchTemplateException {
 
         Item[] currentItems = item.getAllItems(true);
         int produceTally = 0;
@@ -176,6 +182,9 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
                 SoundPlayer.playSound(SoundName, item, 0);
                 return false;
             }
+        } else {
+            String name = ItemTemplateFactory.getInstance().getTemplate(templateConsume).getName();
+            performer.getCommunicator().sendSafeServerMessage(String.format("No %s found, stopping action.", name));
         }
         return true;
     }
@@ -191,7 +200,7 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
     // Block items from being moved to certain items
     public static boolean blockMove(Item source, Item target, Creature performer) {
         for (int id : WagonFactory.wagonList) {
-            if (target.getTemplateId() == id) {
+            if (target.getTemplateId() == id && target.getModelName().equals("model.transports.medium.wagon.logging")) {
                 if (source.getTemplateId() != ItemList.logHuge) {
                     performer.getCommunicator().sendNormalServerMessage("Only felled trees can be put into a logging wagon.");
                     return true;
@@ -199,6 +208,70 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
             }
         }
         return false;
+    }
+
+    public static void registerWagonHook() {
+        try {
+            CtClass[] input = {
+                    HookManager.getInstance().getClassPool().get("com.wurmonline.server.items.Item"),
+                    HookManager.getInstance().getClassPool().get("com.wurmonline.server.behaviours.Vehicle")
+            };
+            CtClass output = CtPrimitiveType.voidType;
+            HookManager.getInstance().registerHook("com.wurmonline.server.behaviours.Vehicles", "setSettingsForVehicle",
+                    Descriptor.ofMethod(output, input), () -> (proxy, method, args) -> {
+                        Item item = (Item) args[0];
+                        int templateId = item.getTemplateId();
+                        for (int i : WagonFactory.wagonList) {
+                            if (i == templateId) {
+                                Vehicle vehicle = (Vehicle) args[1];
+                                VehicleFacadeImpl vehfacade = new VehicleFacadeImpl(vehicle);
+                                if (Features.Feature.WAGON_PASSENGER.isEnabled()) {
+                                    vehfacade.createPassengerSeats(1);
+                                } else {
+                                    vehfacade.createPassengerSeats(0);
+                                }
+                                //vehfacade.setPilotName("driver");
+                                vehfacade.setCreature(false);
+                                vehfacade.setEmbarkString("ride");
+                                //vehfacade.setEmbarksString("rides");
+                                vehicle.name = item.getName();
+                                vehicle.setSeatFightMod(0, 0.9f, 0.3f);
+                                vehicle.setSeatOffset(0, 0f, 0f, 0f, 1.453f);
+                                if (Features.Feature.WAGON_PASSENGER.isEnabled()) {
+                                    vehicle.setSeatFightMod(1, 1f, 0.4f);
+                                    vehicle.setSeatOffset(1, 4.05f, 0f, 0.84f);
+                                }
+                                vehicle.maxHeightDiff = 0.07f;
+                                vehicle.maxDepth = -0.7f;
+                                vehicle.skillNeeded = 21f;
+                                vehfacade.setMaxSpeed(1f);
+                                vehicle.commandType = ProtoConstants.TELE_START_COMMAND_CART;
+                                SeatsFacadeImpl seatfacad = new SeatsFacadeImpl();
+
+                                final Seat[] hitches = {
+                                        seatfacad.CreateSeat((byte) 2),
+                                        seatfacad.CreateSeat((byte) 2),
+                                        seatfacad.CreateSeat((byte) 2),
+                                        seatfacad.CreateSeat((byte) 2)
+                                };
+                                hitches[0].offx = -2f;
+                                hitches[0].offy = -1f;
+                                hitches[1].offx = -2f;
+                                hitches[1].offy = 1f;
+                                hitches[2].offx = -5f;
+                                hitches[2].offy = -1f;
+                                hitches[3].offx = -5f;
+                                hitches[3].offy = 1f;
+                                vehicle.addHitchSeats(hitches);
+                                vehicle.setMaxAllowedLoadDistance(4);
+                                return null;
+                            }
+                        }
+                        return method.invoke(proxy, args);
+                    });
+        } catch (NotFoundException e) {
+            logger.log(Level.FINE, (String.format("Vehicle hook: %s", e.toString())));
+        }
     }
 
 }

@@ -9,6 +9,7 @@ import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
 import com.wurmonline.server.items.ItemList;
 import com.wurmonline.server.items.ItemTypes;
+import com.wurmonline.server.items.NoSuchTemplateException;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.shared.constants.SoundNames;
 import net.WAC.wurmunlimited.mods.windmill.Windmill;
@@ -95,7 +96,11 @@ public class PlankAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 				// damage the sawmill a bit when used
 				float dam1 = Server.rand.nextFloat() * 0.2f;
 				target.setDamage(target.getDamage() + dam1);
-				return Windmill.itemCreate(performer, target, ItemList.plank, ItemList.log, (int) (3000 - (target.getCurrentQualityLevel() * 10)), 20, 1000, SoundNames.CARPENTRY_SAW_SND);
+				try {
+					return Windmill.itemCreate(performer, target, ItemList.plank, ItemList.log, (int) (3000 - (target.getCurrentQualityLevel() * 10)), 20, 1000, SoundNames.CARPENTRY_SAW_SND);
+				} catch (NoSuchTemplateException e) {
+					e.printStackTrace();
+				}
 			}
 
 		}

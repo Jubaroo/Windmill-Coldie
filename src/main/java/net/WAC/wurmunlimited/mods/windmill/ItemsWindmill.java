@@ -51,6 +51,7 @@ public class ItemsWindmill implements WurmServerMod, ItemTypes, MiscConstants {
 		Sawmill.addRequirement(new CreationRequirement(6, ItemList.ironBand, 20, true));
 		Sawmill.addRequirement(new CreationRequirement(7, ItemList.stoneBrick, 200, true));
 		Sawmill.addRequirement(new CreationRequirement(8, ItemList.shingleWood, 100, true));
+		Sawmill.addRequirement(new CreationRequirement(9, ItemList.clothYard, 40, true));
 
 
 		try {
@@ -75,6 +76,7 @@ public class ItemsWindmill implements WurmServerMod, ItemTypes, MiscConstants {
 		Windmill.addRequirement(new CreationRequirement(7, ItemList.stoneBrick, 250, true));
 		Windmill.addRequirement(new CreationRequirement(8, ItemList.colossusPart, 50, true));
 		Windmill.addRequirement(new CreationRequirement(9, ItemList.shingleWood, 210, true));
+		Windmill.addRequirement(new CreationRequirement(10, ItemList.clothYard, 40, true));
 	}
 
 	private static int createWagon(String model, String name) throws IOException {
@@ -124,12 +126,12 @@ public class ItemsWindmill implements WurmServerMod, ItemTypes, MiscConstants {
 	}
 
 	public static void createCreationEntry(int templateId) {
-		AdvancedCreationEntry entry = CreationEntryCreator.createAdvancedEntry(SkillList.CARPENTRY_FINE, ItemList.plank, ItemList.wheelAxleSmall, templateId, false, false, 0f, true, true, 0, 40.0D, CreationCategories.CARTS);
-		entry.addRequirement(new CreationRequirement(1, ItemList.wheelAxleSmall, 1, true));
-		entry.addRequirement(new CreationRequirement(2, ItemList.plank, 20, true));
-		entry.addRequirement(new CreationRequirement(3, ItemList.shaft, 4, true));
-		entry.addRequirement(new CreationRequirement(4, ItemList.nailsIronSmall, 10, true));
-		entry.addRequirement(new CreationRequirement(5, ItemList.yoke, 2, true));
+		AdvancedCreationEntry Wagon = CreationEntryCreator.createAdvancedEntry(SkillList.CARPENTRY_FINE, ItemList.plank, ItemList.wheelAxleSmall, templateId, false, false, 0f, true, true, 0, 40.0D, CreationCategories.CARTS);
+		Wagon.addRequirement(new CreationRequirement(1, ItemList.wheelAxleSmall, 1, true));
+		Wagon.addRequirement(new CreationRequirement(2, ItemList.plank, 30, true));
+		Wagon.addRequirement(new CreationRequirement(3, ItemList.shaft, 8, true));
+		Wagon.addRequirement(new CreationRequirement(4, ItemList.nailsIronSmall, 15, true));
+		Wagon.addRequirement(new CreationRequirement(5, ItemList.yoke, 2, true));
 	}
 
 

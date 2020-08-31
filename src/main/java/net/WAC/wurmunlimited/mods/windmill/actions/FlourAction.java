@@ -9,6 +9,7 @@ import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.Item;
 import com.wurmonline.server.items.ItemList;
 import com.wurmonline.server.items.ItemTypes;
+import com.wurmonline.server.items.NoSuchTemplateException;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.shared.constants.SoundNames;
 import net.WAC.wurmunlimited.mods.windmill.Windmill;
@@ -92,7 +93,11 @@ public class FlourAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 					return true;
 				}
 				performer.getStatus().modifyStamina(-4000.0F);
-				return Windmill.itemCreate(performer, target, ItemList.flour, ItemList.wheat, (int) (300 - (target.getCurrentQualityLevel() * 2)), 20, 1000, SoundNames.TOOL_GRINDSTONE);
+				try {
+					return Windmill.itemCreate(performer, target, ItemList.flour, ItemList.wheat, (int) (300 - (target.getCurrentQualityLevel() * 2)), 20, 1000, SoundNames.TOOL_GRINDSTONE);
+				} catch (NoSuchTemplateException e) {
+					e.printStackTrace();
+				}
 			}
 
 		}
