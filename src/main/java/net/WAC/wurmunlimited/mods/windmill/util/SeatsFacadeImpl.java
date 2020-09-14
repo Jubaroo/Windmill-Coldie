@@ -25,21 +25,15 @@ public class SeatsFacadeImpl implements SeatsFacade {
             throw new HookException(e);
         }
 
-
-    }
-
-    public static void init() {
     }
 
     @Override
     public Seat CreateSeat(byte _type) {
         try {
-            Seat s = ReflectionUtil.callPrivateConstructor(seat, _type);
-            return s;
+            return ReflectionUtil.callPrivateConstructor(seat, _type);
         } catch (InstantiationException | IllegalAccessException | InvocationTargetException e) {
             throw new HookException(e);
         }
-
 
     }
 
