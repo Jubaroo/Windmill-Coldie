@@ -1,22 +1,20 @@
 package net.WAC.wurmunlimited.mods.windmill;
 
 import com.wurmonline.server.FailedException;
-import com.wurmonline.server.Features;
 import com.wurmonline.server.Items;
-import com.wurmonline.server.behaviours.Seat;
-import com.wurmonline.server.behaviours.Vehicle;
+import com.wurmonline.server.Server;
 import com.wurmonline.server.creatures.Creature;
 import com.wurmonline.server.items.*;
 import com.wurmonline.server.sounds.SoundPlayer;
-import com.wurmonline.shared.constants.ProtoConstants;
-import javassist.*;
-import javassist.bytecode.Descriptor;
+import javassist.CannotCompileException;
+import javassist.ClassPool;
+import javassist.NotFoundException;
 import javassist.expr.ExprEditor;
 import javassist.expr.MethodCall;
 import net.WAC.wurmunlimited.mods.windmill.actions.FlourAction;
 import net.WAC.wurmunlimited.mods.windmill.actions.PlankAction;
 import net.WAC.wurmunlimited.mods.windmill.actions.ShaftAction;
-import net.WAC.wurmunlimited.mods.windmill.util.SeatsFacadeImpl;
+import net.WAC.wurmunlimited.mods.windmill.util.WagonHook;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 import org.gotti.wurmunlimited.modloader.classhooks.InvocationHandlerFactory;
 import org.gotti.wurmunlimited.modloader.interfaces.Configurable;
@@ -24,8 +22,8 @@ import org.gotti.wurmunlimited.modloader.interfaces.ItemTemplatesCreatedListener
 import org.gotti.wurmunlimited.modloader.interfaces.ServerStartedListener;
 import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
 import org.gotti.wurmunlimited.modsupport.actions.ModActions;
-import org.gotti.wurmunlimited.modsupport.vehicles.VehicleFacadeImpl;
 
+import java.io.IOException;
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.util.Properties;
@@ -40,30 +38,31 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
         return "v4.0";
     }
 
-    public static int windmillTemplateId = 5557;
-    public static int sawmillTemplateId = 5558;
-    public static int loggingWagonTemplateId = 5559;
     public static boolean wagonsEnabled = false;
+    public static int windmillHoldSize = 200;
+    public static int sawmillHoldSize = 200;
+    public static int loggingWagonHoldSize = 200;
+    public static int damageToTarget = 2;
 
     @Override
     public void configure(Properties properties) {
-        windmillTemplateId = Integer.parseInt(properties.getProperty("Windmill_templateId", String.valueOf(5557)));
-        sawmillTemplateId = Integer.parseInt(properties.getProperty("Sawmill_templateId", String.valueOf(5558)));
-        loggingWagonTemplateId = Integer.parseInt(properties.getProperty("Logging_Wagon_templateId", String.valueOf(5559)));
-        wagonsEnabled = Boolean.parseBoolean(properties.getProperty("Wagons_Enabled", String.valueOf(false)));
+        damageToTarget = Integer.parseInt(properties.getProperty("Max_Damage_Per_Creation", String.valueOf(damageToTarget)));
+        windmillHoldSize = Integer.parseInt(properties.getProperty("Windmill_Hold_Size", String.valueOf(windmillHoldSize))) - 100;
+        sawmillHoldSize = Integer.parseInt(properties.getProperty("Sawmill_Hold_Size", String.valueOf(sawmillHoldSize))) - 100;
+        loggingWagonHoldSize = Integer.parseInt(properties.getProperty("Logging_Wagon_Hold_Size", String.valueOf(loggingWagonHoldSize))) - 100;
+        wagonsEnabled = Boolean.parseBoolean(properties.getProperty("Logging_Wagon_Enabled", String.valueOf(wagonsEnabled)));
         if (wagonsEnabled) {
             WagonHook.registerWagonManageHook();
             WagonHook.registerWagonHook();
+            logger.log(Level.INFO, "Logging Wagon's are enabled");
+            logger.log(Level.INFO, (String.format("Logging Wagon Hold Size = %d", loggingWagonHoldSize)));
         }
-        logger.log(Level.INFO, (String.format("Windmill templateId = %d", windmillTemplateId)));
-        logger.log(Level.INFO, (String.format("Sawmill templateId = %d", sawmillTemplateId)));
-        if (wagonsEnabled) {
-            logger.log(Level.INFO, "Logging Wagon's are enabled", loggingWagonTemplateId);
-            logger.log(Level.INFO, (String.format("Logging Wagon templateId = %d", loggingWagonTemplateId)));
-        }
-        //TODO add configs from properties file
-        // make the sawmill take small damage every time it creates an item?
-        // make an enchant for the mill to work?
+        logger.log(Level.INFO, (String.format("Windmill Hold Size = %d", windmillHoldSize)));
+        logger.log(Level.INFO, (String.format("Sawmill Hold Size = %d", sawmillHoldSize)));
+        //TODO
+        // make an enchant for the mill to work
+        // make items have auto generated id's
+
     }
 
     @Override
@@ -98,8 +97,8 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
                             @Override
                             public Object invoke(Object object, Method method, Object[] args) throws Throwable {
                                 Item item = (Item) object;
-                                if (item.getTemplateId() == loggingWagonTemplateId) {
-                                    return item.getItemCount() < 201;
+                                if (item.getTemplateId() == ItemsWindmill.LOGGING_WAGON_ID) {
+                                    return item.getItemCount() < loggingWagonHoldSize;
                                 }
                                 return method.invoke(object, args);
                             }
@@ -122,7 +121,12 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
 
     @Override
     public void onItemTemplatesCreated() {
-        new ItemsWindmill();
+        try {
+            ItemsWindmill.registerDecorativeItems();
+            ItemsWindmill.initCreationEntry();
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
     }
 
     public static boolean itemCreate(Creature performer, Item item, int templateProduce, int templateConsume, int weightconsume, int maxNums, int maxItems, String SoundName) throws NoSuchTemplateException {
@@ -142,6 +146,7 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
         maxNums = Math.min(maxNums, consumeTally);
         //stop if reached maxItems to make in inventory
         if (produceTally >= maxItems) {
+            performer.getCommunicator().sendNormalServerMessage(String.format("There are too many items in the %s already. Remove some and try again. The maximum number of items that can fit is %d.", item.getName(), maxItems));
             return true;
         }
         int countcreated = 0;
@@ -180,10 +185,23 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
                     }
                 }
             }
-            if (countcreated > 1) createdname = createdname + "s";
+            if (countcreated > 1) createdname = String.format("%ss", createdname);
+            // added stamina check
+            if (performer.getStatus().getStamina() < 5000) {
+                performer.getCommunicator().sendNormalServerMessage("You must rest.");
+                return true;
+            }
             if (playsound) {
                 performer.getCommunicator().sendSafeServerMessage(String.format("Created %d %s", countcreated, createdname));
                 SoundPlayer.playSound(SoundName, item, 0);
+                // added to damage target when stuff is created
+                float dmg = damageToTarget * Server.rand.nextFloat();
+                item.setDamage(item.getDamage() + dmg);
+                if (performer.getPower() >= 3) {
+                    performer.getCommunicator().sendSafeServerMessage(String.format("Added %s damage to %s", dmg, item.getName()));
+                }
+                // added stamina drain
+                performer.getStatus().modifyStamina(-4000.0F);
                 return false;
             }
         } else {
@@ -195,7 +213,7 @@ public class Windmill implements WurmServerMod, Configurable, ServerStartedListe
 
     // Block items from being moved to certain items
     public static boolean blockMove(Item source, Item target, Creature performer) {
-        if (target.getTemplateId() == loggingWagonTemplateId) {
+        if (target.getTemplateId() == ItemsWindmill.LOGGING_WAGON_ID) {
             if (source.getTemplateId() != ItemList.logHuge) {
                 performer.getCommunicator().sendNormalServerMessage("Only felled trees can be put into a logging wagon.");
                 return true;

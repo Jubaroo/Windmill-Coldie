@@ -1,4 +1,4 @@
-package net.WAC.wurmunlimited.mods.windmill;
+package net.WAC.wurmunlimited.mods.windmill.util;
 
 import com.wurmonline.server.Features;
 import com.wurmonline.server.behaviours.ActionEntry;
@@ -12,7 +12,7 @@ import javassist.CtClass;
 import javassist.CtPrimitiveType;
 import javassist.NotFoundException;
 import javassist.bytecode.Descriptor;
-import net.WAC.wurmunlimited.mods.windmill.util.SeatsFacadeImpl;
+import net.WAC.wurmunlimited.mods.windmill.ItemsWindmill;
 import org.gotti.wurmunlimited.modloader.classhooks.HookManager;
 import org.gotti.wurmunlimited.modloader.classhooks.InvocationHandlerFactory;
 import org.gotti.wurmunlimited.modsupport.vehicles.VehicleFacadeImpl;
@@ -38,7 +38,7 @@ public class WagonHook {
             HookManager.getInstance().registerHook("com.wurmonline.server.behaviours.Vehicles", "setSettingsForVehicle",
                     Descriptor.ofMethod(output, input), () -> (proxy, method, args) -> {
                         Item item = (Item) args[0];
-                        if (item.getTemplateId() == Windmill.loggingWagonTemplateId) {
+                        if (item.getTemplateId() == ItemsWindmill.LOGGING_WAGON_ID) {
                             Vehicle vehicle = (Vehicle) args[1];
                             VehicleFacadeImpl vehfacade = new VehicleFacadeImpl(vehicle);
                             if (Features.Feature.WAGON_PASSENGER.isEnabled()) {
@@ -109,12 +109,12 @@ public class WagonHook {
                                     LinkedList<ActionEntry> permissions = new LinkedList<ActionEntry>();
 
                                     if (item.mayManage(performer)) {
-                                        if (item.getTemplateId() == Windmill.loggingWagonTemplateId) {
+                                        if (item.getTemplateId() == ItemsWindmill.LOGGING_WAGON_ID) {
                                             permissions.add(Actions.actionEntrys[Actions.MANAGE_WAGON]);
                                         }
                                     }
                                     if (item.maySeeHistory(performer)) {
-                                        if (item.getTemplateId() == Windmill.loggingWagonTemplateId) {
+                                        if (item.getTemplateId() == ItemsWindmill.LOGGING_WAGON_ID) {
                                             permissions.add(new ActionEntry(Actions.SHOW_HISTORY_FOR_OBJECT, "History of Wagon", "viewing"));
                                         }
                                     }

@@ -12,6 +12,7 @@ import com.wurmonline.server.items.ItemTypes;
 import com.wurmonline.server.items.NoSuchTemplateException;
 import com.wurmonline.server.players.Player;
 import com.wurmonline.shared.constants.SoundNames;
+import net.WAC.wurmunlimited.mods.windmill.ItemsWindmill;
 import net.WAC.wurmunlimited.mods.windmill.Windmill;
 import org.gotti.wurmunlimited.modloader.interfaces.WurmServerMod;
 import org.gotti.wurmunlimited.modsupport.actions.ActionPerformer;
@@ -57,7 +58,7 @@ public class FlourAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 	public List<ActionEntry> getBehavioursFor(Creature performer, Item target) {
 		// add check for if event active
 		if (performer instanceof Player) {
-			if (target.getTemplateId() == Windmill.windmillTemplateId)
+			if (target.getTemplateId() == ItemsWindmill.WINDMILL_ID)
 				return (List<ActionEntry>) Arrays.asList(actionEntry);
 		}
 		return null;
@@ -82,19 +83,19 @@ public class FlourAction implements WurmServerMod, ItemTypes, MiscConstants, Mod
 		//max number of items to make each time.
 		int itemstomake = 20;
 
-		if (target.getTemplateId() == Windmill.windmillTemplateId) {
+		if (target.getTemplateId() == ItemsWindmill.WINDMILL_ID) {
 			if (counter == 1.0F) {
 				performer.sendActionControl(actionstring, true, actiontime);
 				performer.getCommunicator().sendNormalServerMessage(String.format("You will make a maximum of %d flour every %d seconds.", itemstomake, tickTimes));
 			}
 			if (act.currentSecond() % tickTimes == 0) {
-				if (performer.getStatus().getStamina() < 5000) {
-					performer.getCommunicator().sendNormalServerMessage("You must rest.");
-					return true;
-				}
-				performer.getStatus().modifyStamina(-4000.0F);
+				//if (performer.getStatus().getStamina() < 5000) {
+				//	performer.getCommunicator().sendNormalServerMessage("You must rest.");
+				//	return true;
+				//}
+				//performer.getStatus().modifyStamina(-4000.0F);
 				try {
-					return Windmill.itemCreate(performer, target, ItemList.flour, ItemList.wheat, (int) (300 - (target.getCurrentQualityLevel() * 2)), 20, 1000, SoundNames.TOOL_GRINDSTONE);
+					return Windmill.itemCreate(performer, target, ItemList.flour, ItemList.wheat, (int) (300 - (target.getCurrentQualityLevel() * 2)), 20, Windmill.windmillHoldSize, SoundNames.TOOL_GRINDSTONE);
 				} catch (NoSuchTemplateException e) {
 					e.printStackTrace();
 				}
